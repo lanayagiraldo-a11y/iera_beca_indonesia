@@ -50,8 +50,7 @@ const EMPTY_FORM = {
   availability_confirmed: false,
   emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_country_code: '+57', emergency_contact_relation: 'Madre',
   accepted_charter: false,
-  islamic_courses: [],
-  form_language: 'es'
+  islamic_courses: []
 }
 
 export default function PublicApplyES() {
