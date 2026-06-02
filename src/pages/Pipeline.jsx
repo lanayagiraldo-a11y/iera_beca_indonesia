@@ -393,7 +393,12 @@ function CandidateCard({ candidate, meta = {}, onClick }) {
       onClick={onClick}
       className="bg-white p-2.5 rounded-lg border-l-[3px] border-iera-500 hover:shadow-md transition cursor-pointer"
     >
-      <div className="text-xs font-semibold mb-1 truncate">{candidate.full_name}</div>
+      <div className="text-xs font-semibold mb-1 truncate flex items-center gap-1">
+        {candidate.notes?.includes('[REVISION_COORDINADOR]') && (
+          <span title="Requiere revisión del coordinador (edad 41-45)" className="text-amber-500">⚠️</span>
+        )}
+        <span className="truncate">{candidate.full_name}</span>
+      </div>
       <div className="text-[10px] text-slate-500 mb-2">{candidate.countries?.name}</div>
       <div className="text-[10px] font-semibold text-slate-700 mb-2">{meta.nextAction}</div>
 

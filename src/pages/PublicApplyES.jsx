@@ -3,6 +3,9 @@ import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { ARABIC_LEVELS, EMERGENCY_RELATIONS, PRIORITY_CRITERIA, MUSLIM_STATUS_OPTIONS, COUNTRY_CODES } from '../lib/constants'
 import { evaluateAutoPreselection } from '../lib/autoPreselection'
+import BlockingModal from '../components/BlockingModal'
+
+const REVIEW_MARKER = '[REVISION_COORDINADOR]'
 
 const STORAGE_KEY = 'iera-application-draft-es-v1'
 
@@ -62,6 +65,7 @@ export default function PublicApplyES() {
   const [currentStep, setCurrentStep] = useState(0)
   const [form, setForm] = useState(EMPTY_FORM)
   const [restored, setRestored] = useState(false)
+  const [blockingReasons, setBlockingReasons] = useState([])
   const formTopRef = useRef(null)
 
   useEffect(() => {
@@ -170,10 +174,18 @@ export default function PublicApplyES() {
       setStepErrors(errors)
       return
     }
+    const evaluation = evaluateAutoPreselection(form)
+    if (evaluation.blocking.length > 0) {
+      setBlockingReasons(evaluation.blocking)
+      return
+    }
+
     setSaving(true)
     setError(null)
     try {
-      const evaluation = evaluateAutoPreselection(form)
+      const baseNote = evaluation.needsReview
+        ? `${REVIEW_MARKER} Edad fuera del rango estándar (41-45). Revisar antes de avanzar de etapa. (ES)`
+        : 'Preselección automática vía formulario público (ES)'
       const payload = {
         ...form,
         country_id: parseInt(form.country_id),
@@ -182,9 +194,7 @@ export default function PublicApplyES() {
         muslim_status: form.muslim_status || null,
         conversion_month: form.muslim_status === 'new_muslim' ? form.conversion_month || null : null,
         current_stage: evaluation.suggestedStage,
-        notes: evaluation.passed
-          ? 'Preselección automática vía formulario público (ES)'
-          : `Auto-rechazado vía formulario público (ES). Razones: ${evaluation.rejectedReasons.join(', ')}`
+        notes: baseNote
       }
       const { data, error: insertError } = await supabase.from('candidates').insert(payload).select().single()
       if (insertError) throw insertError
@@ -198,18 +208,16 @@ export default function PublicApplyES() {
           candidate_id: data.id, from_stage: 'inscrito', to_stage: 'preseleccionado',
           changed_by: 'system', notes: 'Preselección automática aprobada'
         })
-      } else {
+      } else if (evaluation.needsReview) {
         await supabase.from('stages_history').insert({
-          candidate_id: data.id, from_stage: 'inscrito', to_stage: 'auto_rechazado',
-          changed_by: 'system', notes: `Razones: ${evaluation.rejectedReasons.join(', ')}`
+          candidate_id: data.id, from_stage: 'inscrito', to_stage: 'inscrito',
+          changed_by: 'system', notes: `${REVIEW_MARKER} Coordinador debe revisar (edad 41-45)`
         })
       }
 
       localStorage.removeItem(STORAGE_KEY)
 
-      navigate(`/aplicar/resultado?passed=${evaluation.passed}&id=${data.id}&lang=es${
-        !evaluation.passed ? `&reasons=${encodeURIComponent(evaluation.rejectedReasons.join('|'))}` : ''
-      }`)
+      navigate(`/aplicar/resultado?passed=true&id=${data.id}&lang=es${evaluation.needsReview ? '&review=1' : ''}`)
     } catch (err) {
       console.error(err)
       setError(err.message || 'Error al enviar la solicitud')
@@ -223,6 +231,12 @@ export default function PublicApplyES() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <BlockingModal
+        open={blockingReasons.length > 0}
+        lang="es"
+        reasons={blockingReasons}
+        onClose={() => setBlockingReasons([])}
+      />
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">

@@ -1,7 +1,8 @@
 import { Outlet, NavLink } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { useAuth, signOut } from '../lib/auth'
 
-const navItems = [
+const baseNavItems = [
   { to: '/dashboard', icon: '▣', label: 'Dashboard' },
   { to: '/candidatos', icon: '◉', label: 'Candidates' },
   { to: '/pipeline', icon: '▤', label: 'Pipeline' }
@@ -49,6 +50,18 @@ function ShareLink() {
 
 export default function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const { adminUser } = useAuth()
+  const navItems = adminUser?.role === 'continental'
+    ? [...baseNavItems, { to: '/admin/usuarios', icon: '👥', label: 'Admin users' }]
+    : baseNavItems
+  const initials = (adminUser?.full_name || adminUser?.email || 'U')
+    .split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+  const displayName = adminUser?.full_name || adminUser?.email || 'User'
+  const roleLabel = adminUser?.role === 'continental'
+    ? 'Continental'
+    : adminUser?.role === 'country_manager'
+      ? `Country Manager · ${adminUser.country_code || '—'}`
+      : 'Admin'
 
   // Close drawer on route change
   useEffect(() => {
@@ -129,11 +142,23 @@ export default function Layout() {
               <strong className="text-slate-900">iERA Indonesia Scholarships 2026</strong>
             </div>
           </div>
-          <div className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-100 rounded-full text-sm">
-            <div className="w-7 h-7 rounded-full bg-iera-500 text-white flex items-center justify-center font-semibold text-xs">
-              LA
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-100 rounded-full text-sm">
+              <div className="w-7 h-7 rounded-full bg-iera-500 text-white flex items-center justify-center font-semibold text-xs">
+                {initials}
+              </div>
+              <span className="hidden sm:inline text-slate-700">
+                {displayName} <span className="text-slate-400">·</span>{' '}
+                <span className="text-xs text-slate-500">{roleLabel}</span>
+              </span>
             </div>
-            <span className="hidden sm:inline">Liliana Anaya · Admin</span>
+            <button
+              onClick={signOut}
+              title="Sign out"
+              className="text-slate-500 hover:text-slate-900 text-sm px-2.5 py-1.5 rounded hover:bg-slate-100 transition"
+            >
+              ↪ Sign out
+            </button>
           </div>
         </header>
         <div className="p-4 md:p-8">
