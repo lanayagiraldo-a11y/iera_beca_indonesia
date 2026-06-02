@@ -210,8 +210,13 @@ export default function PublicApply() {
           <Link to="/" className="flex items-center gap-2">
             <img src="/iera-logo.png" alt="iERA" className="h-8" />
           </Link>
-          <div className="text-xs text-slate-500 hidden sm:block">
-            Step {currentStep + 1} of {STEPS.length} · ~{stepDef.estimate}
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-slate-500 hidden sm:block">
+              Step {currentStep + 1} of {STEPS.length} · ~{stepDef.estimate}
+            </div>
+            <Link to="/aplicar/es" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+              🌐 Español
+            </Link>
           </div>
         </div>
         {/* Progress bar */}
