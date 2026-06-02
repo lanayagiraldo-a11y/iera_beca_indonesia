@@ -47,7 +47,7 @@ export default function Landing() {
           />
           <div className="flex items-center gap-3">
             <a href="#requirements" className="hidden sm:block text-sm font-semibold hover:text-iera-cyan transition">
-              Requisitos
+              Requirements
             </a>
             <a href="#faq" className="hidden sm:block text-sm font-semibold hover:text-iera-cyan transition">
               FAQ

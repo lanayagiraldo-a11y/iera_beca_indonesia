@@ -4,18 +4,41 @@ import { supabase } from '../lib/supabase'
 import { ARABIC_LEVELS, EMERGENCY_RELATIONS, PRIORITY_CRITERIA, MUSLIM_STATUS_OPTIONS, COUNTRY_CODES } from '../lib/constants'
 import { evaluateAutoPreselection } from '../lib/autoPreselection'
 
-const STORAGE_KEY = 'iera-application-draft-v1'
+const STORAGE_KEY = 'iera-application-draft-es-v1'
 
 const STEPS = [
-  { id: 'personal',   title: 'About you',              subtitle: 'Basic personal information',                 icon: '👤', estimate: '2 min' },
-  { id: 'passport',   title: 'Passport',               subtitle: 'Travel document details',                          icon: '🛂', estimate: '1 min' },
-  { id: 'islamic',    title: 'Islamic background',       subtitle: 'Reference, background and education',         icon: '🕌', estimate: '2 min' },
-  { id: 'motivation', title: 'Motivation',            subtitle: 'Why you want to participate',                   icon: '🎯', estimate: '3 min' },
-  { id: 'commitment', title: 'Final commitment',      subtitle: 'Availability, contact and acceptance',       icon: '✓',  estimate: '2 min' }
+  { id: 'personal',   title: 'Sobre ti',              subtitle: 'Información personal básica',                   icon: '👤', estimate: '2 min' },
+  { id: 'passport',   title: 'Pasaporte',              subtitle: 'Detalles del documento de viaje',              icon: '🛂', estimate: '1 min' },
+  { id: 'islamic',    title: 'Perfil islámico',        subtitle: 'Referencia, antecedentes y formación',         icon: '🕌', estimate: '2 min' },
+  { id: 'motivation', title: 'Motivación',             subtitle: 'Por qué quieres participar',                   icon: '🎯', estimate: '3 min' },
+  { id: 'commitment', title: 'Compromiso final',       subtitle: 'Disponibilidad, contacto y aceptación',        icon: '✓',  estimate: '2 min' }
+]
+
+const ARABIC_LEVELS_ES = [
+  { value: 'none',         label: 'Ninguno' },
+  { value: 'basic',        label: 'Básico' },
+  { value: 'intermediate', label: 'Intermedio' },
+  { value: 'advanced',     label: 'Avanzado' }
+]
+
+const EMERGENCY_RELATIONS_ES = ['Madre', 'Padre', 'Cónyuge', 'Hermano/a', 'Hijo/a', 'Otro']
+
+const MUSLIM_STATUS_OPTIONS_ES = [
+  { value: 'born_muslim', label: 'Muslim de nacimiento', description: 'Muslim desde el nacimiento' },
+  { value: 'new_muslim',  label: 'Nuevo Muslim (revertido)', description: 'Abrazó el Islam en etapas posteriores de la vida' }
+]
+
+const PRIORITY_CRITERIA_ES = [
+  { key: 'has_institution',    label: 'Tiene o lidera una institución islámica',    points: 10 },
+  { key: 'active_dawah',       label: 'Actualmente realiza dawah activa',            points: 8 },
+  { key: 'community_network',  label: 'Red comunitaria amplia',                      points: 6 },
+  { key: 'iera_referral',      label: 'Referido por un sheikh de iERA',              points: 5 },
+  { key: 'speaks_other_lang',  label: 'Habla inglés u otro idioma adicional',        points: 4 },
+  { key: 'three_plus_courses', label: '3 o más cursos islámicos formales',           points: 4 }
 ]
 
 const EMPTY_FORM = {
-  full_name: '', email: '', phone: '', whatsapp: '', whatsapp_country_code: '+52', birth_date: '',
+  full_name: '', email: '', phone: '', whatsapp: '', whatsapp_country_code: '+57', birth_date: '',
   country_id: '', city: '', occupation: '', education_level: '',
   passport_number: '', passport_expiry: '', passport_country: '',
   sheikh_reference_name: '', sheikh_reference_contact: '', islamic_center_name: '',
@@ -25,12 +48,13 @@ const EMPTY_FORM = {
   has_institution: false, active_dawah: false, community_network: false,
   iera_referral: false, speaks_other_lang: false, three_plus_courses: false,
   availability_confirmed: false,
-  emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_country_code: '+52', emergency_contact_relation: 'Mother',
+  emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_country_code: '+57', emergency_contact_relation: 'Madre',
   accepted_charter: false,
-  islamic_courses: []
+  islamic_courses: [],
+  form_language: 'es'
 }
 
-export default function PublicApply() {
+export default function PublicApplyES() {
   const navigate = useNavigate()
   const [countries, setCountries] = useState([])
   const [saving, setSaving] = useState(false)
@@ -41,7 +65,6 @@ export default function PublicApply() {
   const [restored, setRestored] = useState(false)
   const formTopRef = useRef(null)
 
-  // Restore draft from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
@@ -54,7 +77,6 @@ export default function PublicApply() {
     supabase.from('countries').select('*').order('name').then(({ data }) => setCountries(data || []))
   }, [])
 
-  // Auto-save draft on every change
   useEffect(() => {
     if (form.full_name || form.email) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(form))
@@ -78,49 +100,48 @@ export default function PublicApply() {
   }
   const removeCourse = (i) => update('islamic_courses', form.islamic_courses.filter((_, idx) => idx !== i))
 
-  // Validate current step BEFORE allowing next
   const validateCurrentStep = () => {
     const errors = []
     const step = STEPS[currentStep].id
 
     if (step === 'personal') {
-      if (!form.full_name?.trim()) errors.push('Full name')
-      if (!form.email?.trim()) errors.push('Email')
-      if (!/^\S+@\S+\.\S+$/.test(form.email || '')) errors.push('Valid email format')
-      if (!form.whatsapp?.trim()) errors.push('WhatsApp number')
-      if (!form.birth_date) errors.push('Date of birth')
-      if (age !== null && (age < 18 || age > 40)) errors.push('Age must be between 18 and 40')
-      if (!form.country_id) errors.push('Country of residence')
-      if (!form.city?.trim()) errors.push('City')
+      if (!form.full_name?.trim()) errors.push('Nombre completo')
+      if (!form.email?.trim()) errors.push('Correo electrónico')
+      if (!/^\S+@\S+\.\S+$/.test(form.email || '')) errors.push('Formato de correo válido')
+      if (!form.whatsapp?.trim()) errors.push('Número de WhatsApp')
+      if (!form.birth_date) errors.push('Fecha de nacimiento')
+      if (age !== null && (age < 18 || age > 40)) errors.push('La edad debe estar entre 18 y 40 años')
+      if (!form.country_id) errors.push('País de residencia')
+      if (!form.city?.trim()) errors.push('Ciudad')
     }
 
     if (step === 'passport') {
-      if (!form.passport_number?.trim()) errors.push('Passport number')
-      if (!form.passport_expiry) errors.push('Passport expiry date')
+      if (!form.passport_number?.trim()) errors.push('Número de pasaporte')
+      if (!form.passport_expiry) errors.push('Fecha de vencimiento del pasaporte')
       if (form.passport_expiry) {
         const days = (new Date(form.passport_expiry) - new Date()) / (1000 * 60 * 60 * 24)
-        if (days < 180) errors.push('Passport must be valid for at least 6 months')
+        if (days < 180) errors.push('El pasaporte debe ser válido por al menos 6 meses')
       }
     }
 
     if (step === 'islamic') {
-      if (!form.muslim_status) errors.push('Muslim status')
-      if (form.muslim_status === 'new_muslim' && !form.conversion_month) errors.push('Approximate month you embraced Islam')
-      if (!form.sheikh_reference_name?.trim()) errors.push('Sheikh or Islamic center reference')
-      if (!form.sheikh_reference_contact?.trim()) errors.push('Reference contact')
+      if (!form.muslim_status) errors.push('Estado Muslim')
+      if (form.muslim_status === 'new_muslim' && !form.conversion_month) errors.push('Mes aproximado en que abrazaste el Islam')
+      if (!form.sheikh_reference_name?.trim()) errors.push('Referencia de sheikh o centro islámico')
+      if (!form.sheikh_reference_contact?.trim()) errors.push('Contacto de referencia')
     }
 
     if (step === 'motivation') {
       if (!form.motivation_text?.trim() || motivationWords < 150) {
-        errors.push('Motivation (minimum 150 words)')
+        errors.push('Motivación (mínimo 150 palabras)')
       }
     }
 
     if (step === 'commitment') {
-      if (!form.availability_confirmed) errors.push('Confirm 3-month availability')
-      if (!form.accepted_charter) errors.push('Accept program terms')
-      if (!form.emergency_contact_name?.trim()) errors.push('Emergency contact name')
-      if (!form.emergency_contact_phone?.trim()) errors.push('Emergency contact phone')
+      if (!form.availability_confirmed) errors.push('Confirmar disponibilidad de 3 meses')
+      if (!form.accepted_charter) errors.push('Aceptar los términos del programa')
+      if (!form.emergency_contact_name?.trim()) errors.push('Nombre del contacto de emergencia')
+      if (!form.emergency_contact_phone?.trim()) errors.push('Teléfono del contacto de emergencia')
     }
 
     return errors
@@ -163,37 +184,36 @@ export default function PublicApply() {
         conversion_month: form.muslim_status === 'new_muslim' ? form.conversion_month || null : null,
         current_stage: evaluation.suggestedStage,
         notes: evaluation.passed
-          ? 'Preseleccion automatica via formulario publico'
-          : `Auto-rechazado via formulario publico. Razones: ${evaluation.rejectedReasons.join(', ')}`
+          ? 'Preselección automática vía formulario público (ES)'
+          : `Auto-rechazado vía formulario público (ES). Razones: ${evaluation.rejectedReasons.join(', ')}`
       }
       const { data, error: insertError } = await supabase.from('candidates').insert(payload).select().single()
       if (insertError) throw insertError
 
       await supabase.from('stages_history').insert({
         candidate_id: data.id, from_stage: null, to_stage: 'inscrito',
-        changed_by: 'system', notes: 'Registro via formulario publico'
+        changed_by: 'system', notes: 'Registro vía formulario público (español)'
       })
       if (evaluation.passed) {
         await supabase.from('stages_history').insert({
           candidate_id: data.id, from_stage: 'inscrito', to_stage: 'preseleccionado',
-          changed_by: 'system', notes: 'Preseleccion automatica aprobada'
+          changed_by: 'system', notes: 'Preselección automática aprobada'
         })
       } else {
         await supabase.from('stages_history').insert({
           candidate_id: data.id, from_stage: 'inscrito', to_stage: 'auto_rechazado',
-          changed_by: 'system', notes: `Reasons: ${evaluation.rejectedReasons.join(', ')}`
+          changed_by: 'system', notes: `Razones: ${evaluation.rejectedReasons.join(', ')}`
         })
       }
 
-      // Clear draft on successful submit
       localStorage.removeItem(STORAGE_KEY)
 
-      navigate(`/aplicar/resultado?passed=${evaluation.passed}&id=${data.id}${
+      navigate(`/aplicar/resultado?passed=${evaluation.passed}&id=${data.id}&lang=es${
         !evaluation.passed ? `&reasons=${encodeURIComponent(evaluation.rejectedReasons.join('|'))}` : ''
       }`)
     } catch (err) {
       console.error(err)
-      setError(err.message || 'Error submitting application')
+      setError(err.message || 'Error al enviar la solicitud')
       setSaving(false)
     }
   }
@@ -204,17 +224,15 @@ export default function PublicApply() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* ─── Sticky compact header ─── */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <img src="/iera-logo.png" alt="iERA" className="h-8" />
           </Link>
           <div className="text-xs text-slate-500 hidden sm:block">
-            Step {currentStep + 1} of {STEPS.length} · ~{stepDef.estimate}
+            Paso {currentStep + 1} de {STEPS.length} · ~{stepDef.estimate}
           </div>
         </div>
-        {/* Progress bar */}
         <div className="h-1 bg-slate-100">
           <div
             className="h-full bg-gradient-to-r from-iera-cyan via-iera-green to-iera-yellow transition-all duration-500"
@@ -224,7 +242,6 @@ export default function PublicApply() {
       </header>
 
       <div className="max-w-3xl mx-auto px-4 py-8" ref={formTopRef}>
-        {/* ─── Step indicator (visual journey) ─── */}
         <div className="flex justify-center gap-1.5 mb-8">
           {STEPS.map((s, i) => (
             <div
@@ -239,39 +256,36 @@ export default function PublicApply() {
           ))}
         </div>
 
-        {/* ─── Step header ─── */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-iera-500 text-white rounded-full text-[10px] font-bold uppercase tracking-widest mb-4">
             <span className="iera-diamond"></span>
-            Step {currentStep + 1} of {STEPS.length}
+            Paso {currentStep + 1} de {STEPS.length}
           </div>
           <div className="text-5xl mb-3">{stepDef.icon}</div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-iera-500 mb-2">{stepDef.title}</h1>
           <p className="text-slate-600">{stepDef.subtitle}</p>
         </div>
 
-        {/* ─── Restored notice ─── */}
         {restored && currentStep === 0 && (
           <div className="mb-5 p-3 bg-iera-cyan/10 border border-iera-cyan/30 rounded-lg text-sm text-slate-700 flex items-start gap-2">
             <span>💾</span>
             <div className="flex-1">
-              <strong>Draft restored.</strong> We saved your previous progress. You can continue where you left off.
+              <strong>Borrador restaurado.</strong> Guardamos tu progreso anterior. Puedes continuar desde donde lo dejaste.
               <button
                 type="button"
                 onClick={() => { setForm(EMPTY_FORM); localStorage.removeItem(STORAGE_KEY); setRestored(false) }}
                 className="ml-2 underline hover:no-underline text-xs"
               >
-                Start fresh
+                Empezar de nuevo
               </button>
             </div>
           </div>
         )}
 
-        {/* ─── Validation errors ─── */}
         {stepErrors.length > 0 && (
           <div className="mb-5 p-4 bg-amber-50 border-2 border-amber-300 text-amber-900 rounded-lg text-sm">
-            <div className="font-bold mb-2">Please complete these before continuing:</div>
-            <ul className="list-disc list-insiof space-y-0.5 ml-1">
+            <div className="font-bold mb-2">Por favor completa estos campos antes de continuar:</div>
+            <ul className="list-disc list-inside space-y-0.5 ml-1">
               {stepErrors.map((err, i) => <li key={i}>{err}</li>)}
             </ul>
           </div>
@@ -283,85 +297,84 @@ export default function PublicApply() {
           </div>
         )}
 
-        {/* ─── Form content (per step) ─── */}
         <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8">
 
-          {/* STEP 1: Personal info */}
+          {/* PASO 1: Datos personales */}
           {stepDef.id === 'personal' && (
             <div className="space-y-5">
-              <FullField label="Full name" required>
-                <input className="input-base" value={form.full_name} onChange={(e) => update('full_name', e.target.value)} placeholder="As it appears on your passport" autoFocus />
+              <FullField label="Nombre completo" required>
+                <input className="input-base" value={form.full_name} onChange={(e) => update('full_name', e.target.value)} placeholder="Tal como aparece en tu pasaporte" autoFocus />
               </FullField>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Date of birth" required>
+                <Field label="Fecha de nacimiento" required>
                   <input type="date" className="input-base" value={form.birth_date} onChange={(e) => update('birth_date', e.target.value)} />
                 </Field>
-                <Field label="Age">
+                <Field label="Edad">
                   <div className={`px-3 py-2 rounded-lg text-sm font-semibold ${
                     age === null ? 'bg-slate-50 text-slate-400' :
                     age >= 18 && age <= 40 ? 'bg-iera-green/10 text-iera-green' :
                     'bg-red-50 text-red-600'
                   }`}>
-                    {age === null ? '-' : age >= 18 && age <= 40 ? `${age} years · Eligible` : `${age} years · out of range (18-40)`}
+                    {age === null ? '-' : age >= 18 && age <= 40 ? `${age} años · Elegible` : `${age} años · Fuera del rango (18-40)`}
                   </div>
                 </Field>
 
-                <FullField label="Email" required hint="We will send updates here">
-                  <input type="email" className="input-base" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="name@email.com" />
+                <FullField label="Correo electrónico" required hint="Aquí enviaremos las actualizaciones">
+                  <input type="email" className="input-base" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="nombre@correo.com" />
                 </FullField>
 
-                <FullField label="WhatsApp" required hint="Your Country Manager will contact you here">
+                <FullField label="WhatsApp" required hint="Tu Country Manager te contactará por aquí">
                   <div className="flex gap-2">
                     <select className="input-base w-28" value={form.whatsapp_country_code} onChange={(e) => update('whatsapp_country_code', e.target.value)}>
-                      {COUNTRY_CODES.map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
+                      {COUNTRY_CODES.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name}</option>)}
                     </select>
-                    <input type="tel" className="input-base flex-1" value={form.whatsapp} onChange={(e) => update('whatsapp', e.target.value)} placeholder="phone number" />
+                    <input type="tel" className="input-base flex-1" value={form.whatsapp} onChange={(e) => update('whatsapp', e.target.value)} placeholder="número de teléfono" />
                   </div>
                 </FullField>
 
-                <Field label="Country of residence" required>
+                <Field label="País de residencia" required>
                   <select className="input-base" value={form.country_id} onChange={(e) => update('country_id', e.target.value)}>
-                    <option value="">Select...</option>
+                    <option value="">Selecciona...</option>
                     {countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </Field>
-                <Field label="City" required>
+                <Field label="Ciudad" required>
                   <input className="input-base" value={form.city} onChange={(e) => update('city', e.target.value)} />
                 </Field>
 
-                <Field label="Current occupation" hint="What you do today">
-                  <input className="input-base" value={form.occupation} onChange={(e) => update('occupation', e.target.value)} placeholder="e.g. student, merchant" />
+                <Field label="Ocupación actual" hint="¿A qué te dedicas hoy?">
+                  <input className="input-base" value={form.occupation} onChange={(e) => update('occupation', e.target.value)} placeholder="p.ej. estudiante, comerciante" />
                 </Field>
-                <Field label="Education level">
+                <Field label="Nivel de educación">
                   <select className="input-base" value={form.education_level} onChange={(e) => update('education_level', e.target.value)}>
-                    <option value="">Select...</option>
-                    <option>High school</option>
-                    <option>Technical</option>
-                    <option>University</option>
-                    <option>Postgraduate</option>
+                    <option value="">Selecciona...</option>
+                    <option>Bachillerato</option>
+                    <option>Técnico</option>
+                    <option>Universidad</option>
+                    <option>Posgrado</option>
                   </select>
                 </Field>
               </div>
             </div>
           )}
 
-          {/* STEP 2: Passport */}
+          {/* PASO 2: Pasaporte */}
           {stepDef.id === 'passport' && (
             <div className="space-y-5">
               <div className="bg-iera-cyan/10 border border-iera-cyan/30 rounded-lg p-3 text-sm text-slate-700">
-                <strong className="text-iera-500">Your passport must be valid for at least 6 months</strong> from the travel date. If it expires sooner, renew it before applying.
+                <strong className="text-iera-500">Tu pasaporte debe tener vigencia de al menos 6 meses</strong> desde la fecha de viaje. Si vence antes, renuévalo antes de aplicar.
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FullField label="Passport number" required>
-                  <input className="input-base" value={form.passport_number} onChange={(e) => update('passport_number', e.target.value)} placeholder="e.g. G12345678" autoFocus />
+                <FullField label="Número de pasaporte" required>
+                  <input className="input-base" value={form.passport_number} onChange={(e) => update('passport_number', e.target.value)} placeholder="p.ej. G12345678" autoFocus />
                 </FullField>
-                <Field label="Expiry date" required>
+                <Field label="Fecha de vencimiento" required>
                   <input type="date" className="input-base" value={form.passport_expiry} onChange={(e) => update('passport_expiry', e.target.value)} />
                 </Field>
-                <Field label="Issuing country">
-                  <input className="input-base" value={form.passport_country} onChange={(e) => update('passport_country', e.target.value)} placeholder="Country of issue" />
+                <Field label="País de emisión">
+                  <input className="input-base" value={form.passport_country} onChange={(e) => update('passport_country', e.target.value)} placeholder="País que emitió el pasaporte" />
                 </Field>
               </div>
 
@@ -372,21 +385,20 @@ export default function PublicApply() {
                     : 'bg-red-50 text-red-600'
                 }`}>
                   {(new Date(form.passport_expiry) - new Date()) / (1000 * 60 * 60 * 24) > 180
-                    ? 'Your passport meets the 6-month requirement'
-                    : 'Your passport expires soon. Renew it before applying'}
+                    ? 'Tu pasaporte cumple el requisito de 6 meses'
+                    : 'Tu pasaporte vence pronto. Renuévalo antes de aplicar'}
                 </div>
               )}
             </div>
           )}
 
-          {/* STEP 3: Islamic */}
+          {/* PASO 3: Perfil islámico */}
           {stepDef.id === 'islamic' && (
             <div className="space-y-6">
-              {/* Muslim status */}
               <div>
-                <label className="block text-sm font-bold text-slate-800 mb-3">Muslim status <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-bold text-slate-800 mb-3">Estado Muslim <span className="text-red-500">*</span></label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {MUSLIM_STATUS_OPTIONS.map((opt) => (
+                  {MUSLIM_STATUS_OPTIONS_ES.map((opt) => (
                     <label
                       key={opt.value}
                       className={`p-4 border-2 rounded-xl cursor-pointer transition ${
@@ -410,75 +422,72 @@ export default function PublicApply() {
                 {form.muslim_status === 'new_muslim' && (
                   <div className="mt-4 p-4 bg-iera-cyan/5 border border-iera-cyan/20 rounded-lg">
                     <label className="block text-sm font-bold text-slate-800 mb-2">
-                      When did you embrace Islam? <span className="text-red-500">*</span>
+                      ¿Cuándo abrazaste el Islam? <span className="text-red-500">*</span>
                     </label>
-                    <p className="text-xs text-slate-500 mb-2">Approximate month and year. We do not need the exact day.</p>
+                    <p className="text-xs text-slate-500 mb-2">Mes y año aproximado. No necesitamos el día exacto.</p>
                     <input type="month" className="input-base max-w-xs" value={form.conversion_month} onChange={(e) => update('conversion_month', e.target.value)} />
                   </div>
                 )}
               </div>
 
-              {/* Sheikh reference */}
               <div className="pt-5 border-t border-slate-200">
-                <h3 className="text-sm font-bold text-slate-800 mb-3">Sheikh or Islamic center reference</h3>
+                <h3 className="text-sm font-bold text-slate-800 mb-3">Referencia de sheikh o centro islámico</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Reference name" required>
-                    <input className="input-base" value={form.sheikh_reference_name} onChange={(e) => update('sheikh_reference_name', e.target.value)} placeholder="Sheikh or center name" />
+                  <Field label="Nombre de referencia" required>
+                    <input className="input-base" value={form.sheikh_reference_name} onChange={(e) => update('sheikh_reference_name', e.target.value)} placeholder="Nombre del sheikh o centro" />
                   </Field>
-                  <Field label="Reference contact" required hint="WhatsApp or email">
-                    <input className="input-base" value={form.sheikh_reference_contact} onChange={(e) => update('sheikh_reference_contact', e.target.value)} placeholder="+52... or email@..." />
+                  <Field label="Contacto de referencia" required hint="WhatsApp o correo electrónico">
+                    <input className="input-base" value={form.sheikh_reference_contact} onChange={(e) => update('sheikh_reference_contact', e.target.value)} placeholder="+57... o correo@..." />
                   </Field>
-                  <FullField label="Islamic center you attend">
-                    <input className="input-base" value={form.islamic_center_name} onChange={(e) => update('islamic_center_name', e.target.value)} placeholder="Optional" />
+                  <FullField label="Centro islámico al que asistes">
+                    <input className="input-base" value={form.islamic_center_name} onChange={(e) => update('islamic_center_name', e.target.value)} placeholder="Opcional" />
                   </FullField>
                 </div>
               </div>
 
-              {/* Languages */}
               <div className="pt-5 border-t border-slate-200">
-                <h3 className="text-sm font-bold text-slate-800 mb-3">Languages</h3>
+                <h3 className="text-sm font-bold text-slate-800 mb-3">Idiomas</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Arabic level">
+                  <Field label="Nivel de árabe">
                     <select className="input-base" value={form.arabic_level} onChange={(e) => update('arabic_level', e.target.value)}>
-                      {ARABIC_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+                      {ARABIC_LEVELS_ES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                     </select>
                   </Field>
-                  <Field label="Other languages you speak" hint="English, French, Portuguese, etc.">
-                    <input className="input-base" value={form.other_languages} onChange={(e) => update('other_languages', e.target.value)} placeholder="Optional" />
+                  <Field label="Otros idiomas que hablas" hint="Inglés, francés, portugués, etc.">
+                    <input className="input-base" value={form.other_languages} onChange={(e) => update('other_languages', e.target.value)} placeholder="Opcional" />
                   </Field>
                 </div>
               </div>
 
-              {/* Islamic courses */}
               <div className="pt-5 border-t border-slate-200">
-                <h3 className="text-sm font-bold text-slate-800 mb-1">Islamic courses completed</h3>
-                <p className="text-xs text-slate-500 mb-3">Optional. Add the courses you have taken.</p>
+                <h3 className="text-sm font-bold text-slate-800 mb-1">Cursos islámicos completados</h3>
+                <p className="text-xs text-slate-500 mb-3">Opcional. Agrega los cursos que hayas tomado.</p>
                 <div className="space-y-2">
                   {form.islamic_courses.map((c, i) => (
                     <div key={i} className="grid grid-cols-[1fr,1fr,140px,30px] gap-2 items-center">
-                      <input className="input-base text-xs py-1.5" placeholder="Course name" value={c.name} onChange={(e) => updateCourse(i, 'name', e.target.value)} />
-                      <input className="input-base text-xs py-1.5" placeholder="Institution" value={c.institution} onChange={(e) => updateCourse(i, 'institution', e.target.value)} />
+                      <input className="input-base text-xs py-1.5" placeholder="Nombre del curso" value={c.name} onChange={(e) => updateCourse(i, 'name', e.target.value)} />
+                      <input className="input-base text-xs py-1.5" placeholder="Institución" value={c.institution} onChange={(e) => updateCourse(i, 'institution', e.target.value)} />
                       <input type="month" className="input-base text-xs py-1.5" value={c.date} onChange={(e) => updateCourse(i, 'date', e.target.value)} />
                       <button type="button" className="text-slate-400 hover:text-red-500" onClick={() => removeCourse(i)}>×</button>
                     </div>
                   ))}
                   <button type="button" onClick={addCourse} className="px-3 py-1.5 bg-iera-cyan/10 text-iera-cyan rounded-md text-xs font-semibold border border-dashed border-iera-cyan hover:bg-iera-cyan/20">
-                    + Add course
+                    + Agregar curso
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* STEP 4: Motivation */}
+          {/* PASO 4: Motivación */}
           {stepDef.id === 'motivation' && (
             <div className="space-y-6">
-              <FullField label="Why do you want to participate in this program?" required hint="Be specific: what motivates you, what you hope to learn, and how you would apply it when you return. Minimum 150 words.">
+              <FullField label="¿Por qué quieres participar en este programa?" required hint="Sé específico: qué te motiva, qué esperas aprender y cómo lo aplicarías al regresar. Mínimo 150 palabras.">
                 <textarea
                   className="input-base min-h-[180px]"
                   value={form.motivation_text}
                   onChange={(e) => update('motivation_text', e.target.value)}
-                  placeholder="My motivation to participate is..."
+                  placeholder="Mi motivación para participar es..."
                   autoFocus
                 />
                 <div className={`text-xs mt-1.5 ${
@@ -486,23 +495,22 @@ export default function PublicApply() {
                   motivationWords < 220 ? 'text-iera-cyan' :
                   'text-iera-green'
                 }`}>
-                  {motivationWords} words
-                  {motivationWords < 150 && ` · missing ${150 - motivationWords}`}
-                  {motivationWords >= 150 && motivationWords < 220 && ' · sufficient, you can strengthen it if you want'}
-                  {motivationWords >= 220 && ' · very good length'}
+                  {motivationWords} palabras
+                  {motivationWords < 150 && ` · faltan ${150 - motivationWords}`}
+                  {motivationWords >= 150 && motivationWords < 220 && ' · suficiente, puedes reforzarlo si lo deseas'}
+                  {motivationWords >= 220 && ' · muy buena extensión'}
                 </div>
               </FullField>
 
-              <FullField label="What dawah activities are you currently involved in?" hint="Optional, but it helps us understand your commitment">
-                <textarea className="input-base min-h-[100px]" value={form.dawah_activities_current} onChange={(e) => update('dawah_activities_current', e.target.value)} placeholder="Examples: weekly Quran circle, mosque volunteering, social media, classes..." />
+              <FullField label="¿En qué actividades de dawah estás involucrado actualmente?" hint="Opcional, pero nos ayuda a entender tu compromiso">
+                <textarea className="input-base min-h-[100px]" value={form.dawah_activities_current} onChange={(e) => update('dawah_activities_current', e.target.value)} placeholder="Ejemplos: círculo semanal de Corán, voluntariado en mezquita, redes sociales, clases..." />
               </FullField>
 
-              {/* Profile / priority criteria */}
               <div className="pt-5 border-t border-slate-200">
-                <h3 className="text-sm font-bold text-slate-800 mb-1">Your profile</h3>
-                <p className="text-xs text-slate-500 mb-3">Optional. These criteria add bonus points in the evaluation.</p>
+                <h3 className="text-sm font-bold text-slate-800 mb-1">Tu perfil</h3>
+                <p className="text-xs text-slate-500 mb-3">Opcional. Estos criterios suman puntos en la evaluación.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {PRIORITY_CRITERIA.map((c) => (
+                  {PRIORITY_CRITERIA_ES.map((c) => (
                     <label key={c.key} className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${
                       form[c.key] ? 'border-iera-cyan bg-iera-cyan/5' : 'border-slate-200 hover:border-iera-cyan/50'
                     }`}>
@@ -515,10 +523,9 @@ export default function PublicApply() {
             </div>
           )}
 
-          {/* STEP 5: Commitment */}
+          {/* PASO 5: Compromiso */}
           {stepDef.id === 'commitment' && (
             <div className="space-y-5">
-              {/* Availability */}
               <label className={`flex items-start gap-3 cursor-pointer p-5 rounded-xl border-2 transition ${
                 form.availability_confirmed ? 'border-iera-green bg-iera-green/5' : 'border-slate-200 hover:border-iera-cyan/50'
               }`}>
@@ -528,35 +535,33 @@ export default function PublicApply() {
                   onChange={(e) => update('availability_confirmed', e.target.checked)}
                 />
                 <div className="text-sm">
-                  <div className="font-bold mb-1">I confirm full availability for 3 months <span className="text-red-500">*</span></div>
-                  <p className="text-slate-600 text-xs">No work, family, or academic interruptions during the program.</p>
+                  <div className="font-bold mb-1">Confirmo disponibilidad completa por 3 meses <span className="text-red-500">*</span></div>
+                  <p className="text-slate-600 text-xs">Sin interrupciones laborales, familiares ni académicas durante el programa.</p>
                 </div>
               </label>
 
-              {/* Emergency contact */}
               <div className="pt-3">
-                <h3 className="text-sm font-bold text-slate-800 mb-3">Emergency contact</h3>
+                <h3 className="text-sm font-bold text-slate-800 mb-3">Contacto de emergencia</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Name" required>
+                  <Field label="Nombre" required>
                     <input className="input-base" value={form.emergency_contact_name} onChange={(e) => update('emergency_contact_name', e.target.value)} />
                   </Field>
-                  <Field label="Relationship" required>
+                  <Field label="Relación" required>
                     <select className="input-base" value={form.emergency_contact_relation} onChange={(e) => update('emergency_contact_relation', e.target.value)}>
-                      {EMERGENCY_RELATIONS.map((r) => <option key={r}>{r}</option>)}
+                      {EMERGENCY_RELATIONS_ES.map((r) => <option key={r}>{r}</option>)}
                     </select>
                   </Field>
-                  <FullField label="Phone (with country code)" required>
+                  <FullField label="Teléfono (con código de país)" required>
                     <div className="flex gap-2">
                       <select className="input-base w-32" value={form.emergency_contact_country_code} onChange={(e) => update('emergency_contact_country_code', e.target.value)}>
                         {COUNTRY_CODES.map((c) => <option key={c.code} value={c.code}>{c.code} · {c.name}</option>)}
                       </select>
-                      <input type="tel" className="input-base flex-1" value={form.emergency_contact_phone} onChange={(e) => update('emergency_contact_phone', e.target.value)} placeholder="phone number" />
+                      <input type="tel" className="input-base flex-1" value={form.emergency_contact_phone} onChange={(e) => update('emergency_contact_phone', e.target.value)} placeholder="número de teléfono" />
                     </div>
                   </FullField>
                 </div>
               </div>
 
-              {/* Charter acceptance */}
               <div className="pt-3">
                 <label className={`flex items-start gap-3 cursor-pointer p-5 rounded-xl border-2 transition ${
                   form.accepted_charter ? 'border-iera-green bg-iera-green/5' : 'border-amber-300 bg-amber-50/50 hover:border-iera-cyan'
@@ -567,43 +572,41 @@ export default function PublicApply() {
                     onChange={(e) => update('accepted_charter', e.target.checked)}
                   />
                   <div className="text-sm">
-                    <div className="font-bold mb-2">I accept the Dawah Pioneers Program terms <span className="text-red-500">*</span></div>
+                    <div className="font-bold mb-2">Acepto los términos del Programa Dawah Pioneers <span className="text-red-500">*</span></div>
                     <p className="text-slate-700 text-xs leading-relaxed">
-                      I understand that:
+                      Entiendo que:
                       <br />
-                      <strong>(a)</strong> if I withdraw without justified cause approved by iERA, I must reimburse the costs invested in me up to the withdrawal date;
+                      <strong>(a)</strong> si me retiro sin causa justificada aprobada por iERA, debo reembolsar los costos invertidos en mí hasta la fecha de retiro;
                       <br />
-                      <strong>(b)</strong> post-graduation employment is <strong>conditional</strong> on academic performance and BIU recommendation; <strong>not automatic</strong>;
+                      <strong>(b)</strong> el empleo post-graduación es <strong>condicional</strong> al rendimiento académico y recomendación de BIU; <strong>no automático</strong>;
                       <br />
-                      <strong>(c)</strong> if I receive and accept a formal offer, I commit to serving as Outreach Specialist for at least 12 months.
+                      <strong>(c)</strong> si recibo y acepto una oferta formal, me comprometo a servir como Outreach Specialist por al menos 12 meses.
                     </p>
                   </div>
                 </label>
               </div>
 
-              {/* Trust signals near submit */}
               <div className="pt-3 grid grid-cols-3 gap-3 text-center">
                 <div className="text-xs text-slate-500">
                   <div className="text-2xl mb-1">🔒</div>
-                  Data protected
+                  Datos protegidos
                 </div>
                 <div className="text-xs text-slate-500">
                   <div className="text-2xl mb-1">⏱</div>
-                  Review in 3-5 days
+                  Revisión en 3-5 días
                 </div>
                 <div className="text-xs text-slate-500">
                   <div className="text-2xl mb-1">📱</div>
-                  WhatsApp contact
+                  Contacto por WhatsApp
                 </div>
               </div>
             </div>
           )}
 
-          {/* ─── Navigation ─── */}
           <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-200">
             {currentStep > 0 ? (
               <button type="button" onClick={goBack} className="text-sm font-semibold text-slate-600 hover:text-iera-500 flex items-center gap-1">
-                ← Back
+                ← Volver
               </button>
             ) : <div />}
 
@@ -613,7 +616,7 @@ export default function PublicApply() {
                 onClick={goNext}
                 className="bg-iera-500 hover:bg-black text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2"
               >
-                Continue
+                Continuar
                 <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
@@ -624,19 +627,18 @@ export default function PublicApply() {
                 disabled={saving}
                 className="bg-iera-500 hover:bg-black text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2 disabled:opacity-50"
               >
-                {saving ? (<>Sending...</>) : (<>Submit application</>)}
+                {saving ? (<>Enviando...</>) : (<>Enviar solicitud</>)}
               </button>
             )}
           </div>
         </form>
 
-        {/* ─── Footer ─── */}
         <div className="text-center text-xs text-slate-500 mt-8 pt-4 flex flex-col items-center gap-2">
           <img src="/iera-logo.png" alt="iERA" className="h-7 opacity-60" />
           <div>
             iERA · Islamic Education and Research Academy
             <br />
-            <span className="text-slate-400">Dawah Pioneers Indonesia 2026 · Your progress is auto-saved</span>
+            <span className="text-slate-400">Dawah Pioneers Indonesia 2026 · Tu progreso se guarda automáticamente</span>
           </div>
         </div>
       </div>

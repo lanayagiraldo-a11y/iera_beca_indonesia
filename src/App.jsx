@@ -7,6 +7,7 @@ import CandidateNew from './pages/CandidateNew'
 import CandidateDetail from './pages/CandidateDetail'
 import Pipeline from './pages/Pipeline'
 import PublicApply from './pages/PublicApply'
+import PublicApplyES from './pages/PublicApplyES'
 import ApplicationResult from './pages/ApplicationResult'
 import BiuDocument from './pages/BiuDocument'
 import StudentReport from './pages/StudentReport'
@@ -17,9 +18,13 @@ export default function App() {
       {/* PUBLIC LANDING (root) */}
       <Route path="/" element={<Landing />} />
 
-      {/* PUBLIC APPLICATION */}
+      {/* PUBLIC APPLICATION — English */}
       <Route path="/aplicar" element={<PublicApply />} />
       <Route path="/aplicar/resultado" element={<ApplicationResult />} />
+
+      {/* PUBLIC APPLICATION — Spanish */}
+      <Route path="/aplicar/es" element={<PublicApplyES />} />
+      <Route path="/aplicar/es/resultado" element={<ApplicationResult />} />
 
       {/* BIU DOCUMENT (no sidebar — print friendly) */}
       <Route path="/candidatos/:id/biu-document" element={<BiuDocument />} />
