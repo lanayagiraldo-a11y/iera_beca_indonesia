@@ -29,15 +29,20 @@ export default function CandidateDetail() {
 
   const load = async () => {
     setLoading(true)
-    const [{ data: c }, { data: docs }, { data: ev }] = await Promise.all([
-      supabase.from('candidates').select('*, countries(name, code, embassy_location)').eq('id', id).single(),
-      supabase.from('documents').select('*').eq('candidate_id', id),
-      supabase.from('evaluations').select('*').eq('candidate_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle()
-    ])
-    setCandidate(c)
-    setDocuments(docs || [])
-    setEvaluation(ev)
-    setLoading(false)
+    try {
+      const [{ data: c }, { data: docs }, { data: ev }] = await Promise.all([
+        supabase.from('candidates').select('*, countries(name, code, embassy_location)').eq('id', id).single(),
+        supabase.from('documents').select('*').eq('candidate_id', id),
+        supabase.from('evaluations').select('*').eq('candidate_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      ])
+      setCandidate(c)
+      setDocuments(docs || [])
+      setEvaluation(ev)
+    } catch (err) {
+      console.error('Error loading candidate detail:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [id])

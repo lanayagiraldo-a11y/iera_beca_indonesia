@@ -54,9 +54,17 @@ export function AuthProvider({ children }) {
       setLoading(false)
     })()
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    // IMPORTANT: do NOT call other supabase functions (e.g. DB queries) directly
+    // inside this callback. It runs while holding the auth lock, and awaiting
+    // another supabase call that needs the same lock deadlocks the client —
+    // every subsequent query then hangs forever. Defer with setTimeout(0) so the
+    // lock is released before loadAdminUser() runs.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
-      await loadAdminUser(newSession?.user?.id)
+      setTimeout(() => {
+        if (!mounted) return
+        loadAdminUser(newSession?.user?.id)
+      }, 0)
     })
 
     return () => {
