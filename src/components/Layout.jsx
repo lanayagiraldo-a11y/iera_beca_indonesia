@@ -8,42 +8,47 @@ const baseNavItems = [
   { to: '/pipeline', icon: '▤', label: 'Pipeline' }
 ]
 
-function ShareLink() {
+function LinkCard({ label, url }) {
   const [copied, setCopied] = useState(false)
-  const publicUrl = `${window.location.origin}/aplicar`
-
   const copy = () => {
-    navigator.clipboard.writeText(publicUrl)
+    navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-
   return (
-    <div className="px-5 mt-6">
-      <div className="bg-white/10 rounded-lg p-3 border border-white/20">
-        <div className="text-[10px] uppercase tracking-wide opacity-70 font-bold mb-1.5">
-          Public application link
-        </div>
-        <div className="text-[10px] bg-black/20 rounded px-2 py-1.5 mb-2 break-all font-mono">
-          {publicUrl}
-        </div>
-        <div className="flex gap-1.5">
-          <button
-            onClick={copy}
-            className="flex-1 bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold py-1.5 rounded transition"
-          >
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-          <a
-            href={publicUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold py-1.5 rounded text-center transition"
-          >
-            View
-          </a>
-        </div>
+    <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+      <div className="text-[10px] uppercase tracking-wide opacity-70 font-bold mb-1.5">
+        {label}
       </div>
+      <div className="text-[10px] bg-black/20 rounded px-2 py-1.5 mb-2 break-all font-mono">
+        {url}
+      </div>
+      <div className="flex gap-1.5">
+        <button
+          onClick={copy}
+          className="flex-1 bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold py-1.5 rounded transition"
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold py-1.5 rounded text-center transition"
+        >
+          View
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function ShareLink() {
+  const origin = window.location.origin
+  return (
+    <div className="px-5 mt-6 space-y-3">
+      <LinkCard label="Applicant link" url={`${origin}/`} />
+      <LinkCard label="Admin login"     url={`${origin}/login`} />
     </div>
   )
 }
