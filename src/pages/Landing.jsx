@@ -65,9 +65,14 @@ export default function Landing() {
 
         <div className="relative max-w-5xl mx-auto px-4 text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-xs font-bold uppercase tracking-widest mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
             <span className="iera-diamond"></span>
             iERA Dawah Pioneers · Indonesia 2026
+          </div>
+
+          {/* Start-date badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-iera-yellow text-iera-500 rounded-full text-xs font-extrabold uppercase tracking-widest mb-8 shadow-lg">
+            📅 Program starts August 1, 2026
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold leading-tight mb-6">
@@ -193,6 +198,27 @@ export default function Landing() {
             <Requirement title="Valid passport" description="It must be valid for at least 6 months from the travel date." />
             <Requirement title="Full availability for 3 months" description="No work, academic, or family interruptions during the program." />
             <Requirement title="Islamic reference" description="Tazkiyah letter from a recognized sheikh or Islamic center." />
+          </div>
+
+          {/* Visa documents callout */}
+          <div className="bg-iera-yellow/10 border-2 border-iera-yellow rounded-2xl p-6 md:p-8 mb-10">
+            <div className="flex items-start gap-4">
+              <div className="text-3xl">🛂</div>
+              <div className="flex-1">
+                <h3 className="text-lg md:text-xl font-extrabold text-iera-500 mb-2">Visa documents you must prepare</h3>
+                <p className="text-sm text-slate-600 mb-4">These are required to process your Indonesian student visa:</p>
+                <ul className="space-y-2 text-sm text-slate-800">
+                  <li className="flex items-start gap-2">
+                    <span className="text-iera-green font-bold mt-0.5">✓</span>
+                    <span><strong>First two pages of your passport on the same photocopy</strong> (clear scan, both sides visible)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-iera-green font-bold mt-0.5">✓</span>
+                    <span><strong>Clear personal photo</strong> (recent, well-lit, neutral background)</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           <div className="text-center">
