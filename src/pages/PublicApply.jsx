@@ -168,7 +168,11 @@ export default function PublicApply() {
       const baseNote = evaluation.needsReview
         ? `${REVIEW_MARKER} Edad fuera del rango estándar (41-45). Revisar antes de avanzar de etapa.`
         : 'Preseleccion automatica via formulario publico'
+      // Generate the id client-side so we don't need a SELECT RLS policy for anon
+      // (the public_form_insert policy allows INSERT but not RETURNING).
+      const candidateId = crypto.randomUUID()
       const payload = {
+        id: candidateId,
         ...form,
         country_id: parseInt(form.country_id),
         birth_date: form.birth_date || null,
@@ -178,21 +182,21 @@ export default function PublicApply() {
         current_stage: evaluation.suggestedStage,
         notes: baseNote
       }
-      const { data, error: insertError } = await supabase.from('candidates').insert(payload).select().single()
+      const { error: insertError } = await supabase.from('candidates').insert(payload)
       if (insertError) throw insertError
 
       await supabase.from('stages_history').insert({
-        candidate_id: data.id, from_stage: null, to_stage: 'inscrito',
+        candidate_id: candidateId, from_stage: null, to_stage: 'inscrito',
         changed_by: 'system', notes: 'Registro via formulario publico'
       })
       if (evaluation.passed) {
         await supabase.from('stages_history').insert({
-          candidate_id: data.id, from_stage: 'inscrito', to_stage: 'preseleccionado',
+          candidate_id: candidateId, from_stage: 'inscrito', to_stage: 'preseleccionado',
           changed_by: 'system', notes: 'Preseleccion automatica aprobada'
         })
       } else if (evaluation.needsReview) {
         await supabase.from('stages_history').insert({
-          candidate_id: data.id, from_stage: 'inscrito', to_stage: 'inscrito',
+          candidate_id: candidateId, from_stage: 'inscrito', to_stage: 'inscrito',
           changed_by: 'system', notes: `${REVIEW_MARKER} Coordinador debe revisar (edad 41-45)`
         })
       }
@@ -200,7 +204,7 @@ export default function PublicApply() {
       // Clear draft on successful submit
       localStorage.removeItem(STORAGE_KEY)
 
-      navigate(`/aplicar/resultado?passed=true&id=${data.id}${evaluation.needsReview ? '&review=1' : ''}`)
+      navigate(`/aplicar/resultado?passed=true&id=${candidateId}${evaluation.needsReview ? '&review=1' : ''}`)
     } catch (err) {
       console.error(err)
       setError(err.message || 'Error submitting application')
