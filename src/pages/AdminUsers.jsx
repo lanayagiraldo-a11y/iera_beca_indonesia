@@ -1,32 +1,24 @@
 // Admin Users management — continental only.
 // - Lists all admin_users
-// - Invite new admin: sends Supabase magic-link invitation, creates admin_users row
+// - Invite new admin: creates admin_users row + sends a Supabase magic link
 // - Edit role, country assignment, active flag
 //
-// NOTE: Supabase's inviteUserByEmail() requires the service_role key, which
-// must NEVER be exposed to the browser. The clean architecture is to call a
-// Supabase Edge Function with the service key. For now we use the "self-serve"
-// pattern: continental enters email + role + country and creates an
-// admin_users row WITH a placeholder id (a random uuid). When that user signs
-// up for the first time via the public magic link they get from email, an
-// Edge Function or trigger should link auth.users.id ↔ admin_users.email.
+// Invitation flow (no backend required):
+//   1) Continental enters email + role + country → we insert an admin_users
+//      row with a placeholder uuid id.
+//   2) We immediately call supabase.auth.signInWithOtp({ shouldCreateUser:true })
+//      which emails the invitee a Supabase magic link (using the anon key — no
+//      service_role key in the browser).
+//   3) When the invitee opens the link, Supabase creates their auth.users row
+//      and the DB trigger `on_auth_user_link_admin` re-maps admin_users.id ↔
+//      auth.users.id by matching email. They land in the panel signed in.
 //
-// SIMPLER for v1: continental triggers a password-reset email to a new email
-// (Supabase will create the auth user if it doesn't exist when "Enable user
-// signups" is on, OR continental creates them via Supabase dashboard and then
-// this page links the existing auth.user to admin_users by email).
+// The invitee has no password initially; they can set one later via the
+// "Forgot password" flow on the login page (resetPasswordForEmail).
 //
-// To keep this fully working without backend code, this page:
-//   1) Continental enters email + role + country
-//   2) UI tells continental to ALSO create the user in Supabase dashboard
-//      (Authentication → Users → Invite user) using the same email
-//   3) After the new user signs in once, this page's row links automatically
-//      (we look up auth.users by email via the admin API — requires Edge Fn,
-//       OR the user logging in triggers the linking themselves via a trigger).
-//
-// For the MVP, we just store email + role + country_code in admin_users with
-// a TEMPORARY uuid; an Edge Function `link_admin_user` (out of scope here)
-// re-maps the id once the auth.users row exists. See README for that step.
+// NOTE: Supabase's admin.inviteUserByEmail() would be the "invite" semantic but
+// it requires the service_role key, which must NEVER reach the browser — that
+// would need a Supabase Edge Function.
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -57,6 +49,18 @@ export default function AdminUsers() {
   async function toggleActive(user) {
     const { error } = await supabase
       .from('admin_users').update({ active: !user.active }).eq('id', user.id)
+    if (error) return setError(error.message)
+    await load()
+  }
+
+  async function deleteUser(user) {
+    if (user.id === adminUser?.id) return
+    const ok = window.confirm(
+      `Delete admin ${user.email}? They will lose access to the panel immediately. ` +
+      `This removes their admin record (their Supabase login itself is not deleted).`
+    )
+    if (!ok) return
+    const { error } = await supabase.from('admin_users').delete().eq('id', user.id)
     if (error) return setError(error.message)
     await load()
   }
@@ -150,13 +154,22 @@ export default function AdminUsers() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => toggleActive(u)}
-                      disabled={u.id === adminUser?.id}
-                      className="text-xs text-slate-600 hover:text-slate-900 disabled:opacity-30"
-                    >
-                      {u.active ? 'Deactivate' : 'Activate'}
-                    </button>
+                    <div className="flex justify-end gap-3">
+                      <button
+                        onClick={() => toggleActive(u)}
+                        disabled={u.id === adminUser?.id}
+                        className="text-xs text-slate-600 hover:text-slate-900 disabled:opacity-30"
+                      >
+                        {u.active ? 'Deactivate' : 'Activate'}
+                      </button>
+                      <button
+                        onClick={() => deleteUser(u)}
+                        disabled={u.id === adminUser?.id}
+                        className="text-xs text-red-600 hover:text-red-800 disabled:opacity-30"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -165,12 +178,12 @@ export default function AdminUsers() {
         )}
       </div>
 
-      <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
-        <strong>ℹ️ How invitations work (v1):</strong>
+      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
+        <strong>ℹ️ How invitations work:</strong>
         <ol className="list-decimal ml-5 mt-2 space-y-1">
-          <li>Add the user here (their <code>id</code> stays as a placeholder until they log in for the first time).</li>
-          <li>In Supabase dashboard → <em>Authentication → Users → Invite user</em>, send a magic link to the same email.</li>
-          <li>When they sign in, the link between <code>auth.users.id</code> and <code>admin_users</code> is created by a database trigger (see migration).</li>
+          <li>Fill in email, role and country — we create the admin and automatically email them a Supabase magic link.</li>
+          <li>When they open the link, their account is linked by a database trigger and they land in the panel signed in.</li>
+          <li>They can set a password anytime via <em>“Forgot password”</em> on the login page.</li>
         </ol>
       </div>
     </div>
@@ -184,6 +197,7 @@ function InviteAdminModal({ countries, onClose, onCreated }) {
   const [countryCode, setCountryCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [sentTo, setSentTo] = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -191,9 +205,9 @@ function InviteAdminModal({ countries, onClose, onCreated }) {
     if (role === 'country_manager' && !countryCode) return setError('Please select a country.')
     setSubmitting(true)
     try {
-      // Insert a placeholder row. The DB trigger (on_auth_user_created) will
-      // re-link the id once the auth user signs in for the first time, matching
-      // by email.
+      // Insert the admin_users row FIRST with a placeholder id. When the invited
+      // user opens the magic link, Supabase creates their auth.users row and the
+      // DB trigger (on_auth_user_link_admin) re-links the id by matching email.
       const placeholderId = crypto.randomUUID()
       const { error: insErr } = await supabase.from('admin_users').insert({
         id: placeholderId,
@@ -204,12 +218,54 @@ function InviteAdminModal({ countries, onClose, onCreated }) {
         active: true,
       })
       if (insErr) throw insErr
-      onCreated()
+
+      // Send the Supabase magic-link email so they can access the account.
+      // shouldCreateUser:true creates the auth user on first sign-in if needed.
+      // NOTE: this only sends the email — it does NOT affect the current
+      // continental admin's session (the link is verified in the invitee's
+      // own browser).
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      })
+      if (otpErr) {
+        // Row was created but the email failed — surface it so they can retry
+        // or invite from the Supabase dashboard. Don't treat as full failure.
+        setError(`Admin created, but the magic-link email failed: ${otpErr.message}`)
+        setSentTo(null)
+        return
+      }
+
+      setSentTo(email)
     } catch (err) {
       setError(err.message || 'Could not create admin.')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (sentTo) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center">
+          <div className="text-4xl mb-3">✉️</div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Magic link sent</h2>
+          <p className="text-sm text-slate-600">
+            We sent an access link to <strong>{sentTo}</strong>. When they open it, their
+            account is linked automatically and they can access the admin panel.
+          </p>
+          <button
+            onClick={onCreated}
+            className="mt-5 w-full py-2 bg-iera-500 hover:bg-iera-600 text-white rounded-lg text-sm font-bold"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
