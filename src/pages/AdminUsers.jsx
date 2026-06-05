@@ -1,28 +1,46 @@
 // Admin Users management — continental only.
 // - Lists all admin_users
-// - Invite new admin: creates admin_users row + sends a Supabase magic link
+// - Invite new admin: creates the account with a TEMPORARY password (shown
+//   on screen) — NO email is sent, so Supabase's email rate limit is never hit
 // - Edit role, country assignment, active flag
 //
-// Invitation flow (no backend required):
+// Invitation flow (no backend, no SMTP, no email rate limit):
 //   1) Continental enters email + role + country → we insert an admin_users
 //      row with a placeholder uuid id.
-//   2) We immediately call supabase.auth.signInWithOtp({ shouldCreateUser:true })
-//      which emails the invitee a Supabase magic link (using the anon key — no
-//      service_role key in the browser).
-//   3) When the invitee opens the link, Supabase creates their auth.users row
-//      and the DB trigger `on_auth_user_link_admin` re-maps admin_users.id ↔
-//      auth.users.id by matching email. They land in the panel signed in.
+//   2) We generate a strong temporary password and create the auth user via
+//      signUp() on an ISOLATED supabase client (persistSession:false) so the
+//      continental's own session is NOT replaced. No email is sent because
+//      "Confirm email" is disabled in the Supabase Auth settings.
+//   3) Creating the auth.users row fires the DB trigger `on_auth_user_link_admin`
+//      which re-maps admin_users.id ↔ auth.users.id by matching email.
+//   4) We show the email + temporary password on screen; continental delivers
+//      them to the person. They log in at /login and can change it later via
+//      "Forgot password".
 //
-// The invitee has no password initially; they can set one later via the
-// "Forgot password" flow on the login page (resetPasswordForEmail).
-//
-// NOTE: Supabase's admin.inviteUserByEmail() would be the "invite" semantic but
-// it requires the service_role key, which must NEVER reach the browser — that
-// would need a Supabase Edge Function.
+// REQUIREMENT: In Supabase → Authentication → Sign In / Providers → Email,
+// turn OFF "Confirm email". Otherwise signUp() tries to send a confirmation
+// email (rate-limited) and the user can't log in until they confirm.
 
 import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+
+// Isolated client used ONLY to create new auth users. persistSession:false
+// means signUp() won't overwrite the logged-in continental admin's session.
+const signupClient = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false } }
+)
+
+// Strong, human-typeable temporary password (no ambiguous chars like 0/O/1/l).
+function generateTempPassword(len = 14) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
+  const arr = new Uint32Array(len)
+  crypto.getRandomValues(arr)
+  return Array.from(arr, (n) => chars[n % chars.length]).join('')
+}
 
 export default function AdminUsers() {
   const { adminUser } = useAuth()
@@ -181,9 +199,9 @@ export default function AdminUsers() {
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
         <strong>ℹ️ How invitations work:</strong>
         <ol className="list-decimal ml-5 mt-2 space-y-1">
-          <li>Fill in email, role and country — we create the admin and automatically email them a Supabase magic link.</li>
-          <li>When they open the link, their account is linked by a database trigger and they land in the panel signed in.</li>
-          <li>They can set a password anytime via <em>“Forgot password”</em> on the login page.</li>
+          <li>Fill in email, role and country — the account is created with a temporary password (no email is sent).</li>
+          <li>Copy the email + temporary password shown and send them to the new admin (WhatsApp, email, etc.).</li>
+          <li>They log in at <em>/login</em> and can change the password anytime via <em>“Forgot password”</em>.</li>
         </ol>
       </div>
     </div>
@@ -197,7 +215,8 @@ function InviteAdminModal({ countries, onClose, onCreated }) {
   const [countryCode, setCountryCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
-  const [sentTo, setSentTo] = useState(null)
+  const [created, setCreated] = useState(null) // { email, password }
+  const [copied, setCopied] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -205,9 +224,9 @@ function InviteAdminModal({ countries, onClose, onCreated }) {
     if (role === 'country_manager' && !countryCode) return setError('Please select a country.')
     setSubmitting(true)
     try {
-      // Insert the admin_users row FIRST with a placeholder id. When the invited
-      // user opens the magic link, Supabase creates their auth.users row and the
-      // DB trigger (on_auth_user_link_admin) re-links the id by matching email.
+      // Insert the admin_users row FIRST with a placeholder id. Creating the
+      // auth user below fires the DB trigger (on_auth_user_link_admin) which
+      // re-links this row's id by matching email.
       const placeholderId = crypto.randomUUID()
       const { error: insErr } = await supabase.from('admin_users').insert({
         id: placeholderId,
@@ -219,27 +238,20 @@ function InviteAdminModal({ countries, onClose, onCreated }) {
       })
       if (insErr) throw insErr
 
-      // Send the Supabase magic-link email so they can access the account.
-      // shouldCreateUser:true creates the auth user on first sign-in if needed.
-      // NOTE: this only sends the email — it does NOT affect the current
-      // continental admin's session (the link is verified in the invitee's
-      // own browser).
-      const { error: otpErr } = await supabase.auth.signInWithOtp({
+      // Create the auth user with a temporary password. No email is sent
+      // ("Confirm email" is off), so the email rate limit is never hit. We use
+      // an isolated client so this does NOT replace the continental's session.
+      const tempPassword = generateTempPassword()
+      const { error: signUpErr } = await signupClient.auth.signUp({
         email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/`,
-        },
+        password: tempPassword,
       })
-      if (otpErr) {
-        // Row was created but the email failed — surface it so they can retry
-        // or invite from the Supabase dashboard. Don't treat as full failure.
-        setError(`Admin created, but the magic-link email failed: ${otpErr.message}`)
-        setSentTo(null)
+      if (signUpErr) {
+        setError(`Admin row created, but creating the login failed: ${signUpErr.message}`)
         return
       }
 
-      setSentTo(email)
+      setCreated({ email, password: tempPassword })
     } catch (err) {
       setError(err.message || 'Could not create admin.')
     } finally {
@@ -247,22 +259,41 @@ function InviteAdminModal({ countries, onClose, onCreated }) {
     }
   }
 
-  if (sentTo) {
+  if (created) {
+    const credText = `Email: ${created.email}\nTemporary password: ${created.password}`
     return (
       <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center">
-          <div className="text-4xl mb-3">✉️</div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Magic link sent</h2>
-          <p className="text-sm text-slate-600">
-            We sent an access link to <strong>{sentTo}</strong>. When they open it, their
-            account is linked automatically and they can access the admin panel.
-          </p>
-          <button
-            onClick={onCreated}
-            className="mt-5 w-full py-2 bg-iera-500 hover:bg-iera-600 text-white rounded-lg text-sm font-bold"
-          >
-            Done
-          </button>
+        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+          <div className="text-center">
+            <div className="text-4xl mb-3">🔑</div>
+            <h2 className="text-xl font-bold text-slate-900 mb-1">Account created</h2>
+            <p className="text-sm text-slate-600 mb-4">
+              Send these credentials to the new admin. They log in at <strong>/login</strong> and
+              can change the password later via “Forgot password”.
+            </p>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-mono space-y-1">
+            <div><span className="text-slate-500">Email:</span> {created.email}</div>
+            <div><span className="text-slate-500">Password:</span> <strong>{created.password}</strong></div>
+          </div>
+          <div className="mt-3 p-2.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900">
+            ⚠️ This password is shown only once. Copy it now.
+          </div>
+          <div className="flex gap-2 pt-4">
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard?.writeText(credText); setCopied(true) }}
+              className="flex-1 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700"
+            >
+              {copied ? 'Copied ✓' : 'Copy credentials'}
+            </button>
+            <button
+              onClick={onCreated}
+              className="flex-1 py-2 bg-iera-500 hover:bg-iera-600 text-white rounded-lg text-sm font-bold"
+            >
+              Done
+            </button>
+          </div>
         </div>
       </div>
     )
