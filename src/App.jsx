@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './lib/auth'
 import Layout from './components/Layout'
@@ -12,11 +13,13 @@ import PublicApply from './pages/PublicApply'
 import PublicApplyES from './pages/PublicApplyES'
 import ApplicationResult from './pages/ApplicationResult'
 import BiuDocument from './pages/BiuDocument'
-import CandidateExport from './pages/CandidateExport'
 import StudentReport from './pages/StudentReport'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import AdminUsers from './pages/AdminUsers'
+
+// Heavy page (bundles pdf.js) — load only when the export route is opened
+const CandidateExport = lazy(() => import('./pages/CandidateExport'))
 
 export default function App() {
   return (
@@ -49,7 +52,13 @@ export default function App() {
         {/* FULL CANDIDATE EXPORT (auth required, no sidebar) */}
         <Route
           path="/candidatos/:id/export"
-          element={<ProtectedRoute><CandidateExport /></ProtectedRoute>}
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<div className="text-center py-12 text-slate-400">Loading export…</div>}>
+                <CandidateExport />
+              </Suspense>
+            </ProtectedRoute>
+          }
         />
 
         {/* ADMIN (with Layout, auth required) */}
