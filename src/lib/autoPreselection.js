@@ -3,7 +3,7 @@
 // Return shape:
 //   {
 //     blocking:    [{ code, en, es }]   // hard fails → form must NOT submit
-//     needsReview: boolean              // age 41-45 → submit OK, coordinator alerted
+//     needsReview: boolean              // submit OK, coordinator alerted (no age trigger anymore)
 //     passed:      boolean              // truly clean (no blocking, no review)
 //     suggestedStage: 'preseleccionado' | 'inscrito'
 //
@@ -17,8 +17,6 @@
 //   • passed === true      → insert with stage 'preseleccionado'
 
 const MIN_AGE = 18
-const SOFT_MAX_AGE = 40   // 18-40 = clean
-const HARD_MAX_AGE = 45   // 41-45 = review; >45 = block
 const PASSPORT_MIN_DAYS = 180
 
 function computeAge(birthDate) {
@@ -46,16 +44,8 @@ export function evaluateAutoPreselection(formData) {
       en: `You must be at least ${MIN_AGE} years old to apply (you are ${age}).`,
       es: `Debes tener al menos ${MIN_AGE} años para postularte (tienes ${age}).`,
     })
-  } else if (age > HARD_MAX_AGE) {
-    blocking.push({
-      code: 'age_above_hard_max',
-      en: `The maximum age is ${HARD_MAX_AGE} (you are ${age}).`,
-      es: `La edad máxima es ${HARD_MAX_AGE} años (tienes ${age}).`,
-    })
-  } else if (age > SOFT_MAX_AGE) {
-    // 41-45 — accept but flag for coordinator review
-    needsReview = true
   }
+  // No upper age limit — any applicant 18+ is accepted as a clean application.
 
   // ── Passport ───────────────────────────────────────────
   if (!formData.passport_expiry) {
