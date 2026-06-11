@@ -12,6 +12,7 @@ import PublicApply from './pages/PublicApply'
 import PublicApplyES from './pages/PublicApplyES'
 import ApplicationResult from './pages/ApplicationResult'
 import BiuDocument from './pages/BiuDocument'
+import CandidateExport from './pages/CandidateExport'
 import StudentReport from './pages/StudentReport'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
@@ -43,6 +44,12 @@ export default function App() {
         <Route
           path="/candidatos/:id/biu-document"
           element={<ProtectedRoute><BiuDocument /></ProtectedRoute>}
+        />
+
+        {/* FULL CANDIDATE EXPORT (auth required, no sidebar) */}
+        <Route
+          path="/candidatos/:id/export"
+          element={<ProtectedRoute><CandidateExport /></ProtectedRoute>}
         />
 
         {/* ADMIN (with Layout, auth required) */}

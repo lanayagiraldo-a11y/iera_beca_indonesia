@@ -100,6 +100,13 @@ export default function CandidateDetail() {
               >
                 📄 BIU document
               </Link>
+              <Link
+                to={`/candidatos/${candidate.id}/export`}
+                target="_blank"
+                className="text-xs px-3 py-1.5 rounded-md bg-iera-700 hover:bg-iera-800 text-white font-semibold inline-flex items-center gap-1.5 transition"
+              >
+                📑 Export PDF
+              </Link>
             </div>
           </div>
           <div className="text-right">
