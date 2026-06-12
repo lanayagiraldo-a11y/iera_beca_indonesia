@@ -113,7 +113,7 @@ export default function PublicApplyES() {
       if (!/^\S+@\S+\.\S+$/.test(form.email || '')) errors.push('Formato de correo válido')
       if (!form.whatsapp?.trim()) errors.push('Número de WhatsApp')
       if (!form.birth_date) errors.push('Fecha de nacimiento')
-      if (age !== null && (age < 18 || age > 40)) errors.push('La edad debe estar entre 18 y 40 años')
+      if (age !== null && age < 18) errors.push('Debes tener al menos 18 años')
       if (!form.country_id) errors.push('País de residencia')
       if (!form.city?.trim()) errors.push('Ciudad')
     }
@@ -334,10 +334,10 @@ export default function PublicApplyES() {
                 <Field label="Edad">
                   <div className={`px-3 py-2 rounded-lg text-sm font-semibold ${
                     age === null ? 'bg-slate-50 text-slate-400' :
-                    age >= 18 && age <= 40 ? 'bg-iera-green/10 text-iera-green' :
+                    age >= 18 ? 'bg-iera-green/10 text-iera-green' :
                     'bg-red-50 text-red-600'
                   }`}>
-                    {age === null ? '-' : age >= 18 && age <= 40 ? `${age} años · Elegible` : `${age} años · Fuera del rango (18-40)`}
+                    {age === null ? '-' : age >= 18 ? `${age} años · Elegible` : `${age} años · Debes tener al menos 18 años`}
                   </div>
                 </Field>
 

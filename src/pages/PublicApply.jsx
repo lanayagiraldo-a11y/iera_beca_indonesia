@@ -93,7 +93,7 @@ export default function PublicApply() {
       if (!/^\S+@\S+\.\S+$/.test(form.email || '')) errors.push('Valid email format')
       if (!form.whatsapp?.trim()) errors.push('WhatsApp number')
       if (!form.birth_date) errors.push('Date of birth')
-      if (age !== null && (age < 18 || age > 40)) errors.push('Age must be between 18 and 40')
+      if (age !== null && age < 18) errors.push('You must be at least 18 years old')
       if (!form.country_id) errors.push('Country of residence')
       if (!form.city?.trim()) errors.push('City')
     }
@@ -325,10 +325,10 @@ export default function PublicApply() {
                 <Field label="Age">
                   <div className={`px-3 py-2 rounded-lg text-sm font-semibold ${
                     age === null ? 'bg-slate-50 text-slate-400' :
-                    age >= 18 && age <= 40 ? 'bg-iera-green/10 text-iera-green' :
+                    age >= 18 ? 'bg-iera-green/10 text-iera-green' :
                     'bg-red-50 text-red-600'
                   }`}>
-                    {age === null ? '-' : age >= 18 && age <= 40 ? `${age} years · Eligible` : `${age} years · out of range (18-40)`}
+                    {age === null ? '-' : age >= 18 ? `${age} years · Eligible` : `${age} years · must be 18 or older`}
                   </div>
                 </Field>
 

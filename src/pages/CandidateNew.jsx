@@ -57,7 +57,7 @@ export default function CandidateNew() {
     ? Math.floor((new Date() - new Date(form.birth_date)) / (365.25 * 24 * 60 * 60 * 1000))
     : null
 
-  const ageOk = age !== null && age >= 18 && age <= 40
+  const ageOk = age !== null && age >= 18
   const passportOk = form.passport_expiry
     ? (new Date(form.passport_expiry) - new Date()) / (1000 * 60 * 60 * 24) > 180
     : null
@@ -197,7 +197,7 @@ export default function CandidateNew() {
                       ageOk ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                     }`}
                   >
-                    {ageOk ? '18-40 ✓' : '⚠ out of range'}
+                    {ageOk ? '18+ ✓' : '⚠ must be 18 or older'}
                   </span>
                 )}
               </label>

@@ -17,11 +17,11 @@ export function checkGate(candidate, documents, evaluation, targetStageId) {
     case 'preseleccionado': {
       const ageOk = candidate.birth_date && (() => {
         const age = Math.floor((new Date() - new Date(candidate.birth_date)) / (365.25 * 24 * 60 * 60 * 1000))
-        return age >= 18 && age <= 40
+        return age >= 18
       })()
       const passportOk = candidate.passport_expiry && (new Date(candidate.passport_expiry) - new Date()) / (1000 * 60 * 60 * 24) > 180
       requirements.push(
-        { label: 'Age between 18 and 40', met: !!ageOk },
+        { label: '18 years or older', met: !!ageOk },
         { label: 'Valid passport (≥6 months from program start)', met: !!passportOk },
         { label: 'Confirmed 3-month availability', met: !!candidate.availability_confirmed },
         { label: 'Accepted Program Charter terms', met: !!candidate.accepted_charter },

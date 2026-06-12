@@ -193,7 +193,7 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
             <Requirement title="Be Muslim" description="Born Muslims and new Muslims are welcome." />
-            <Requirement title="Be 18 to 40 years old" description="Age is verified through your passport." />
+            <Requirement title="Be 18 years or older" description="Age is verified through your passport." />
             <Requirement title="Live in one of the 7 countries" description="Mexico, Colombia, Ecuador, Venezuela, Paraguay, Honduras, or El Salvador." />
             <Requirement title="Valid passport" description="It must be valid for at least 6 months from the travel date." />
             <Requirement title="Full availability for 3 months" description="No work, academic, or family interruptions during the program." />
