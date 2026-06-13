@@ -11,6 +11,7 @@ import CandidateDetail from './pages/CandidateDetail'
 import Pipeline from './pages/Pipeline'
 import PublicApply from './pages/PublicApply'
 import PublicApplyES from './pages/PublicApplyES'
+import LandingES from './pages/LandingES'
 import ApplicationResult from './pages/ApplicationResult'
 import BiuDocument from './pages/BiuDocument'
 import StudentReport from './pages/StudentReport'
@@ -27,6 +28,7 @@ export default function App() {
       <Routes>
         {/* PUBLIC LANDING (root) */}
         <Route path="/" element={<Landing />} />
+        <Route path="/es" element={<LandingES />} />
 
         {/* PUBLIC APPLICATION — English */}
         <Route path="/aplicar" element={<PublicApply />} />

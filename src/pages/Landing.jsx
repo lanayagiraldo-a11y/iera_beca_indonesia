@@ -52,6 +52,12 @@ export default function Landing() {
             <a href="#faq" className="hidden sm:block text-sm font-semibold hover:text-iera-cyan transition">
               FAQ
             </a>
+            <Link
+              to="/es"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+            >
+              🌐 Español
+            </Link>
             <ApplyCTA size="sm" text="Apply" />
           </div>
         </div>
