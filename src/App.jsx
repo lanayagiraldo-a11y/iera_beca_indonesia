@@ -19,8 +19,9 @@ import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import AdminUsers from './pages/AdminUsers'
 
-// Heavy page (bundles pdf.js) — load only when the export route is opened
+// Heavy pages (bundle pdf.js) — load only when their route is opened
 const CandidateExport = lazy(() => import('./pages/CandidateExport'))
+const CandidateAcademicProfile = lazy(() => import('./pages/CandidateAcademicProfile'))
 
 export default function App() {
   return (
@@ -58,6 +59,18 @@ export default function App() {
             <ProtectedRoute>
               <Suspense fallback={<div className="text-center py-12 text-slate-400">Loading export…</div>}>
                 <CandidateExport />
+              </Suspense>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* UNIVERSITY ACADEMIC PROFILE EN/AR (auth required, no sidebar) */}
+        <Route
+          path="/candidatos/:id/perfil-academico"
+          element={
+            <ProtectedRoute>
+              <Suspense fallback={<div className="text-center py-12 text-slate-400">Loading profile…</div>}>
+                <CandidateAcademicProfile />
               </Suspense>
             </ProtectedRoute>
           }

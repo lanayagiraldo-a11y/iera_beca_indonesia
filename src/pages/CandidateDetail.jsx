@@ -107,6 +107,13 @@ export default function CandidateDetail() {
               >
                 📑 Export PDF
               </Link>
+              <Link
+                to={`/candidatos/${candidate.id}/perfil-academico`}
+                target="_blank"
+                className="text-xs px-3 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white font-semibold inline-flex items-center gap-1.5 transition"
+              >
+                🎓 Academic Profile EN/AR
+              </Link>
             </div>
           </div>
           <div className="text-right">
