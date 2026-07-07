@@ -40,3 +40,6 @@ lerna-debug.log*
 # OS
 Thumbs.db
 .claude/
+.vercel
+.env*
+supabase/.temp/
